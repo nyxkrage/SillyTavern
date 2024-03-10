@@ -776,6 +776,7 @@ let create_save = {
     world: '',
     talkativeness: talkativeness_default,
     alternate_greetings: [],
+    starting_conversation: [],
     depth_prompt_prompt: '',
     depth_prompt_depth: depth_prompt_depth_default,
     depth_prompt_role: depth_prompt_role_default,
@@ -5690,7 +5691,11 @@ async function getChatResult() {
     name2 = characters[this_chid].name;
     if (chat.length === 0) {
         const message = getFirstMessage();
-        chat.push(message);
+        if (Array.isArray(message)) {
+            chat.push(...message);
+        } else {
+            chat.push(message);
+        }
         await saveChatConditional();
     }
     await loadItemizedPrompts(getCurrentChatId());
@@ -5707,6 +5712,26 @@ async function getChatResult() {
 }
 
 function getFirstMessage() {
+    if (characters[this_chid]?.data?.extensions?.starting_conversation
+        && Array.isArray(characters[this_chid]?.data?.extensions?.starting_conversation)
+        && characters[this_chid]?.data?.extensions?.starting_conversation.length > 0)
+    {
+        if (characters[this_chid]?.data?.alternate_greetings.length > 0) {
+            toastr.warning('Character is using starting conversation, but also has alternate greetings. alternate greetings will be ignored.');
+        }
+        const messages = characters[this_chid].data.extensions.starting_conversation.map(message => {
+            return {
+                name: message.role === 'user' ? name1 : name2,
+                is_user: message.role === 'user',
+                is_system: false,
+                send_date: getMessageTimeStamp(),
+                mes: substituteParams(getRegexedString(message.text, message.role === 'user' ? regex_placement.USER_INPUT : regex_placement.AI_OUTPUT)),
+                extra: {},
+            };
+        });
+        return messages;
+    }
+
     const firstMes = characters[this_chid].first_mes || default_ch_mes;
     const alternateGreetings = characters[this_chid]?.data?.alternate_greetings;
 
@@ -6911,6 +6936,7 @@ export function select_selected_character(chid) {
     $('#name_div').addClass('displayNone');
     $('#renameCharButton').css('display', '');
     $('.open_alternate_greetings').data('chid', chid);
+    $('.open_starting_conversation').data('chid', chid);
     $('#set_character_world').data('chid', chid);
     setWorldInfoButtonClass(chid);
     checkEmbeddedWorld(chid);
@@ -6976,6 +7002,7 @@ function select_rm_create() {
     $('#name_div').removeClass('displayNone');
     $('#name_div').addClass('displayBlock');
     $('.open_alternate_greetings').data('chid', undefined);
+    $('.open_starting_conversation').data('chid', undefined);
     $('#set_character_world').data('chid', undefined);
     setWorldInfoButtonClass(undefined, !!create_save.world);
     updateFavButtonState(false);
@@ -7117,6 +7144,7 @@ function callPopup(text, type, inputValue = '', { okButton, rows, wide, large, a
             break;
         case 'text':
         case 'alternate_greeting':
+        case 'starting_conversation':
         case 'char_not_selected':
             $('#dialogue_popup_ok').text(okButton ?? 'Ok');
             $('#dialogue_popup_cancel').css('display', 'none');
@@ -7500,6 +7528,36 @@ function openCharacterWorldPopup() {
     callPopup(template, 'text');
 }
 
+function openStartingConversation() {
+    const chid = $('.open_starting_conversation').data('chid');
+
+    if (menu_type != 'create' && chid === undefined) {
+        toastr.error('Does not have an Id for this character in editor menu.');
+        return;
+    } else {
+        // If the character does not have a starting conversation, create an empty array
+        if (chid && Array.isArray(characters[chid].data?.extensions?.starting_conversation) == false) {
+            characters[chid].data.extensions.starting_conversation = [];
+        }
+    }
+
+    const template = $('#starting_conversation_template .starting_conversation').clone();
+    const getArray = () => menu_type == 'create' ? create_save.starting_conversation : characters[chid].data.extensions.starting_conversation;
+
+    for (let index = 0; index < getArray().length; index++) {
+        addStartingConversation(template, getArray()[index], index, getArray);
+    }
+
+    template.find('.add_starting_conversation').on('click', function () {
+        const array = getArray();
+        const index = array.length;
+        array.push({ text: default_ch_mes, role: index % 2 == 1 ? 'user' : 'char' });
+        addStartingConversation(template, array[index], index, getArray);
+    });
+
+    callPopup(template, 'starting_conversation', '', { wide: true, large: true });
+}
+
 function openAlternateGreetings() {
     const chid = $('.open_alternate_greetings').data('chid');
 
@@ -7530,6 +7588,30 @@ function openAlternateGreetings() {
 
     updateAlternateGreetingsHintVisibility(template);
     callPopup(template, 'alternate_greeting', '', { wide: true, large: true });
+}
+
+function addStartingConversation(template, message, index, getArray) {
+    const messageBlock = $('#starting_conversation_form_template .starting_conversation').clone();
+    messageBlock.find('.starting_conversation_text').on('input', async function () {
+        const value = $(this).val();
+        const array = getArray();
+        array[index].text = value;
+    }).val(message.text);
+    messageBlock.find('.starting_conversation_is_user').on('click', async function () {
+        const value = $(this).prop('checked');
+        const array = getArray();
+        array[index].role = value ? 'user' : 'char';
+    }).prop('checked', message.role === 'user');
+    messageBlock.find('.message_index').text(index + 1);
+    messageBlock.find('.delete_starting_conversation').on('click', async function () {
+        if (confirm('Are you sure you want to delete this starting conversation message?')) {
+            const array = getArray();
+            array.splice(index, 1);
+            // We need to reopen the popup to update the index numbers
+            openStartingConversation();
+        }
+    });
+    template.find('.starting_conversation_list').append(messageBlock);
 }
 
 function addAlternateGreeting(template, greeting, index, getArray) {
@@ -7580,6 +7662,10 @@ async function createOrEditCharacter(e) {
             for (const value of create_save.alternate_greetings) {
                 formData.append('alternate_greetings', value);
             }
+            formData.delete('starting_conversation');
+            if (Array.isArray(create_save.starting_conversation) && create_save.starting_conversation.length > 0) {
+                formData.set('starting_conversation', JSON.stringify(create_save.starting_conversation));
+            }
 
             formData.append('extensions', JSON.stringify(create_save.extensions));
 
@@ -7615,6 +7701,7 @@ async function createOrEditCharacter(e) {
                         { id: '#mes_example_textarea', callback: value => create_save.mes_example = value },
                         { id: '#character_json_data', callback: () => { } },
                         { id: '#alternate_greetings_template', callback: value => create_save.alternate_greetings = value, defaultValue: [] },
+                        { id: '#starting_conversation_template', callback: value => create_save.starting_conversation = value, defaultValue: [] },
                         { id: '#character_world', callback: value => create_save.world = value },
                         { id: '#_character_extensions_fake', callback: value => create_save.extensions = {} },
                     ];
@@ -7668,6 +7755,10 @@ async function createOrEditCharacter(e) {
             for (const value of characters[chid].data.alternate_greetings) {
                 formData.append('alternate_greetings', value);
             }
+        }
+        formData.delete('starting_conversation');
+        if (chid && Array.isArray(characters[chid]?.data?.extensions.starting_conversation)) {
+            formData.set('starting_conversation', JSON.stringify(characters[chid].data.extensions.starting_conversation));
         }
 
         await jQuery.ajax({
@@ -8871,7 +8962,7 @@ jQuery(async function () {
             eventSource.emit(event_types.CHARACTER_DELETED, { id: this_chid, character: characters[this_chid] });
             await handleDeleteCharacter(popup_type, this_chid, deleteChats);
         }
-        if (popup_type == 'alternate_greeting' && menu_type !== 'create') {
+        if ((popup_type == 'alternate_greeting' || popup_type == 'starting_conversation') && menu_type !== 'create') {
             createOrEditCharacter();
         }
         if (popup_type === 'del_group') {
@@ -10267,6 +10358,7 @@ jQuery(async function () {
         $('#world_popup_entries_list').children().find('.up').click();
     });
     $(document).on('click', '.open_alternate_greetings', openAlternateGreetings);
+    $(document).on('click', '.open_starting_conversation', openStartingConversation);
     /* $('#set_character_world').on('click', openCharacterWorldPopup); */
 
     $(document).keyup(function (e) {

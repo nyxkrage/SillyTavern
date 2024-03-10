@@ -317,6 +317,10 @@ function charaFormatData(data, directories) {
         if (typeof data.alternate_greetings === 'string') return [data.alternate_greetings];
         return [];
     };
+    const getStartingConversation = data => {
+        if (data.starting_conversation !== undefined) return JSON.parse(data.starting_conversation);
+        return [];
+    };
 
     // Spec V1 fields
     _.set(char, 'name', data.ch_name);
@@ -354,6 +358,7 @@ function charaFormatData(data, directories) {
     _.set(char, 'data.alternate_greetings', getAlternateGreetings(data));
 
     // ST extension fields to V2 object
+    _.set(char, 'data.extensions.starting_conversation', getStartingConversation(data));
     _.set(char, 'data.extensions.talkativeness', data.talkativeness);
     _.set(char, 'data.extensions.fav', data.fav == 'true');
     _.set(char, 'data.extensions.world', data.world || '');

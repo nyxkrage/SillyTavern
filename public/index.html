@@ -4380,10 +4380,17 @@
                                         <span class="fa-solid fa-circle-question note-link-span"></span>
                                     </a>
                                 </div>
-                                <div class="menu_button menu_button_icon open_alternate_greetings margin0" title="Click to set additional greeting messages" data-i18n="[title]Click to set additional greeting messages">
-                                    <span data-i18n="Alt. Greetings">
-                                        Alt. Greetings
-                                    </span>
+                                <div class="flex-container flexFlowColumn alignItemsFlexEnd">
+                                    <div class="menu_button menu_button_icon open_starting_conversation margin0" title="Click to set additional starting conversation" data-i18n="[title]Click to set starting conversation">
+                                        <span data-i18n="Starting Convo">
+                                            Starting Convo
+                                        </span>
+                                    </div>
+                                    <div class="menu_button menu_button_icon open_alternate_greetings margin0" title="Click to set additional greeting messages" data-i18n="[title]Click to set additional greeting messages">
+                                        <span data-i18n="Alt. Greetings">
+                                            Alt. Greetings
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                             <textarea id="firstmessage_textarea" data-i18n="[placeholder]This will be the first message from the character that starts every chat." placeholder="This will be the first message from the character that starts every chat." name="first_mes" placeholder=""></textarea>
@@ -5480,6 +5487,42 @@
             <img src="">
         </div>
     </div>
+
+    <div id="starting_conversation_template" class="template_element">
+        <div class="starting_conversation flexFlowColumn flex-container">
+            <div class="title_restorable">
+                <h3><span data-i18n="Starting Conversation">Starting Conversation</span></h3>
+                <div title="Add" class="menu_button fa-solid fa-plus add_starting_conversation" data-i18n="[title]Add"></div>
+            </div>
+            <small class="justifyLeft" data-i18n="Starting Conversation Subtitle">
+                These will be loaded as the initial messages from the character and
+                user when starting a new chat.
+            </small>
+            <hr>
+            <div class="starting_conversation_list flexFlowColumn flex-container wide100p">
+                <strong class="starting_conversation_hint margin-bot-10px" data-i18n="Starting Conversation Hint">
+                    Click the <i class="fa-solid fa-plus"></i> button to get started!
+                </strong>
+            </div>
+        </div>
+    </div>
+    <div id="starting_conversation_form_template" class="template_element">
+        <div class="starting_conversation">
+            <div class="title_restorable">
+                <strong>Starting Message #<span class="message_index"></span></strong>
+                <div class="flex-container alignItemsBaseline">
+                    <label>
+                        <span>Is User Message?</span>
+                    </label>
+                    <input type="checkbox" class="starting_conversation_is_user" />
+                    <div class="menu_button fa-solid fa-trash-alt delete_starting_conversation"></div>
+                </div>
+            </div>
+            <textarea name="starting_conversation" data-i18n="[placeholder](This will be the first message from the character that starts every chat)" placeholder="(This will be the first message from the character that starts every chat)" class="text_pole textarea_compact starting_conversation_text maxlength="50000" value="" autocomplete="off" rows="16"></textarea>
+        </div>
+    </div>
+
+
     <div id="alternate_greetings_template" class="template_element">
         <div class="alternate_grettings flexFlowColumn flex-container">
             <div class="title_restorable">
